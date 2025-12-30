@@ -121,8 +121,8 @@ function checkWinner(roomId, room) {
     delete rooms[roomId];
   }
 }
-server.listen(8080, '0.0.0.0', () => {
-  console.log('Server is running! Access it via:');
-  console.log(' - Localhost: http://localhost:8080');
-  console.log(' - LAN (Other devices): http://<IP-Address-Of-This-PC>:8080');
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
