@@ -1,5 +1,5 @@
 {
-  "name": "XO-Online"
+  "name": "XO-Online",
   "version": "1.0.0",
   "description": "XO Online Game for Ninja",
   "main": "server.js",
