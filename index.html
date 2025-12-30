@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XO Online - Ninja Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --box-color: #16213e;
+            --accent-green: #0f3460;
+            --highlight: #e94560;
+            --text-color: #ecf0f1;
+            --x-color: #ff2e63;
+            --o-color: #08d9d6;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top right, #2c2c54, var(--bg-color));
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0px #000;
+            letter-spacing: 2px;
+        }
+        
+        h1 span { color: var(--highlight); }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            transition: all 0.3s ease;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ปุ่มกด */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-green { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4); }
+        .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); color: white; box-shadow: 0 4px 15px rgba(33, 147, 176, 0.4); }
+        .btn-orange { background: linear-gradient(45deg, #f12711, #f5af19); color: white; box-shadow: 0 4px 15px rgba(245, 175, 25, 0.4); }
+
+        /* Input Box */
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            border: 2px solid #333;
+            background: #0f3460;
+            color: white;
+            font-size: 1rem;
+            text-align: center;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--o-color); }
+
+        /* กระดานเกม */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px auto;
+            max-width: 320px;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fredoka One', cursive;
+            font-size: 4rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .cell:hover { background: rgba(255, 255, 255, 0.2); }
+        
+        .cell.x { color: var(--x-color); text-shadow: 0 0 15px var(--x-color); }
+        .cell.o { color: var(--o-color); text-shadow: 0 0 15px var(--o-color); }
+
+        /* สถานะและข้อมูลห้อง */
+        #status { font-size: 1.5rem; margin-bottom: 5px; font-weight: bold; }
+        #room-info { font-size: 0.9rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px;}
+
+        /* Loading Text */
+        #waiting { font-size: 1.2rem; color: var(--o-color); animation: pulse 1.5s infinite; margin-top: 15px; }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        /* Responsive มือถือ */
+        @media (max-width: 400px) {
+            h1 { font-size: 2.5rem; }
+            .cell { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>❌ XO <span>On</span>line</h1>
+
+    <div class="container">
+        <div id="menu">
+            <button class="btn btn-green" onclick="findMatch()">🚀 สุ่มจับคู่ (Auto)</button>
+            <div style="display: flex; align-items: center; margin: 15px 0; color: #aaa;">—— หรือ ——</div>
+            <button class="btn btn-blue" onclick="createRoom()">🏠 สร้างห้องใหม่</button>
+            
+            <div style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px;">
+                <input type="text" id="roomIdInput" placeholder="กรอกเลขห้องเพื่อนที่นี่">
+                <button class="btn btn-orange" onclick="joinRoom()" style="margin:0;">➡️ เข้าห้องเพื่อน</button>
+            </div>
+            
+            <div id="waiting" class="hidden">⏳ กำลังค้นหาคู่ต่อสู้...</div>
+        </div>
+
+        <div id="game" class="hidden">
+            <div id="room-info">Room ID: -</div>
+            <div id="status">รอเริ่มเกม...</div>
+            
+            <div id="game-board">
+                <div class="cell" onclick="move(0)"></div>
+                <div class="cell" onclick="move(1)"></div>
+                <div class="cell" onclick="move(2)"></div>
+                <div class="cell" onclick="move(3)"></div>
+                <div class="cell" onclick="move(4)"></div>
+                <div class="cell" onclick="move(5)"></div>
+                <div class="cell" onclick="move(6)"></div>
+                <div class="cell" onclick="move(7)"></div>
+                <div class="cell" onclick="move(8)"></div>
+            </div>
+            
+            <button class="btn btn-orange" onclick="location.reload()" style="margin-top: 20px;">🚪 ออกจากห้อง</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- ส่วน Logic JavaScript (เหมือนเดิม แต่ปรับ Class เล็กน้อย) ---
+        const socket = io();
+        let mySymbol = null;
+        let currentTurn = 'X';
+        let myRoomId = null;
+        let isMyTurn = false;
+
+        function findMatch() {
+            document.getElementById('waiting').classList.remove('hidden');
+            socket.emit('find_match');
+        }
+
+        function createRoom() {
+            socket.emit('create_room');
+        }
+
+        function joinRoom() {
+            const id = document.getElementById('roomIdInput').value;
+            if(id) socket.emit('join_room', id);
+            else alert("กรุณากรอกเลขห้องก่อนครับ");
+        }
+
+        function move(index) {
+            if (!isMyTurn || currentTurn !== mySymbol) return;
+            socket.emit('make_move', { roomId: myRoomId, index: index, symbol: mySymbol });
+        }
+
+        socket.on('room_created', (roomId) => {
+            document.getElementById('waiting').classList.remove('hidden');
+            document.getElementById('waiting').innerText = `สร้างห้องแล้ว: ${roomId} (รอเพื่อนเข้า...)`;
+        });
+
+        socket.on('game_start', (data) => {
+            mySymbol = data.symbol;
+            myRoomId = data.roomId;
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game').classList.remove('hidden');
+            document.getElementById('room-info').innerText = `Room: ${myRoomId} | คุณคือทีม ${mySymbol}`;
+            updateStatus();
+        });
+
+        socket.on('update_board', (data) => {
+            const cells = document.querySelectorAll('.cell');
+            data.board.forEach((val, i) => {
+                cells[i].innerText = val || '';
+                // ล้างสีเก่า
+                cells[i].classList.remove('x', 'o');
+                // ใส่สีใหม่ตาม X หรือ O
+                if (val === 'X') cells[i].classList.add('x');
+                if (val === 'O') cells[i].classList.add('o');
+            });
+            currentTurn = data.turn;
+            updateStatus();
+        });
+
+        socket.on('game_over', (data) => {
+            setTimeout(() => {
+                if (data.winner === 'Draw') {
+                    alert('เสมอ! (Draw) เกมตึงจัดๆ');
+                } else {
+                    alert(data.winner === mySymbol ? '🎉 ยินดีด้วย! คุณชนะ!' : '💀 เสียใจด้วย คุณแพ้ซะแล้ว');
+                }
+                location.reload();
+            }, 100);
+        });
+
+        socket.on('error_msg', (msg) => alert(msg));
+
+        function updateStatus() {
+            isMyTurn = (mySymbol === currentTurn);
+            const statusEl = document.getElementById('status');
+            if (isMyTurn) {
+                statusEl.innerText = "⚡ ตาของคุณแล้ว!";
+                statusEl.style.color = "#38ef7d"; // สีเขียว
+            } else {
+                statusEl.innerText = "⏳ รอฝ่ายตรงข้าม...";
+                statusEl.style.color = "#ff2e63"; // สีแดง
+            }
+        }
+    </script>
+</body>
+</html>
