@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>XO Online - Ninja Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -28,6 +28,8 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
+            user-select: none; /* กัน User ลากคลุมดำ */
+            -webkit-tap-highlight-color: transparent;
         }
 
         h1 {
@@ -55,7 +57,6 @@
 
         .hidden { display: none !important; }
 
-        /* ปุ่มกด */
         .btn {
             display: block;
             width: 100%;
@@ -66,17 +67,18 @@
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.1s, box-shadow 0.2s;
             font-family: 'Kanit', sans-serif;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:active { transform: scale(0.98); }
+        .btn:active { transform: scale(0.95); }
 
         .btn-green { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4); }
         .btn-blue { background: linear-gradient(45deg, #2193b0, #6dd5ed); color: white; box-shadow: 0 4px 15px rgba(33, 147, 176, 0.4); }
         .btn-orange { background: linear-gradient(45deg, #f12711, #f5af19); color: white; box-shadow: 0 4px 15px rgba(245, 175, 25, 0.4); }
 
-        /* Input Box */
         input[type="text"] {
             width: 100%;
             padding: 15px;
@@ -85,14 +87,14 @@
             border: 2px solid #333;
             background: #0f3460;
             color: white;
-            font-size: 1rem;
+            font-size: 1.2rem;
             text-align: center;
             box-sizing: border-box;
             outline: none;
+            text-transform: uppercase;
         }
         input[type="text"]:focus { border-color: var(--o-color); }
 
-        /* กระดานเกม */
         #game-board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -111,7 +113,7 @@
             font-family: 'Fredoka One', cursive;
             font-size: 4rem;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: background 0.2s;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
@@ -120,11 +122,9 @@
         .cell.x { color: var(--x-color); text-shadow: 0 0 15px var(--x-color); }
         .cell.o { color: var(--o-color); text-shadow: 0 0 15px var(--o-color); }
 
-        /* สถานะและข้อมูลห้อง */
         #status { font-size: 1.5rem; margin-bottom: 5px; font-weight: bold; }
         #room-info { font-size: 0.9rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px;}
-
-        /* Loading Text */
+        
         #waiting { font-size: 1.2rem; color: var(--o-color); animation: pulse 1.5s infinite; margin-top: 15px; }
 
         @keyframes pulse {
@@ -132,8 +132,7 @@
             50% { opacity: 1; }
             100% { opacity: 0.5; }
         }
-
-        /* Responsive มือถือ */
+        
         @media (max-width: 400px) {
             h1 { font-size: 2.5rem; }
             .cell { font-size: 3rem; }
@@ -151,7 +150,7 @@
             <button class="btn btn-blue" onclick="createRoom()">🏠 สร้างห้องใหม่</button>
             
             <div style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px;">
-                <input type="text" id="roomIdInput" placeholder="กรอกเลขห้องเพื่อนที่นี่">
+                <input type="text" id="roomIdInput" placeholder="กรอกเลขห้องเพื่อน" maxlength="6">
                 <button class="btn btn-orange" onclick="joinRoom()" style="margin:0;">➡️ เข้าห้องเพื่อน</button>
             </div>
             
@@ -180,8 +179,9 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- ส่วน Logic JavaScript (เหมือนเดิม แต่ปรับ Class เล็กน้อย) ---
+        // เชื่อมต่อ Server (ไม่ต้องใส่ URL เพราะ Render จัดการให้เอง)
         const socket = io();
+        
         let mySymbol = null;
         let currentTurn = 'X';
         let myRoomId = null;
@@ -189,6 +189,7 @@
 
         function findMatch() {
             document.getElementById('waiting').classList.remove('hidden');
+            document.getElementById('waiting').innerText = "⏳ กำลังค้นหาคู่ต่อสู้...";
             socket.emit('find_match');
         }
 
@@ -207,9 +208,18 @@
             socket.emit('make_move', { roomId: myRoomId, index: index, symbol: mySymbol });
         }
 
+        // --- Event Listeners ---
+
         socket.on('room_created', (roomId) => {
             document.getElementById('waiting').classList.remove('hidden');
-            document.getElementById('waiting').innerText = `สร้างห้องแล้ว: ${roomId} (รอเพื่อนเข้า...)`;
+            document.getElementById('waiting').innerText = `ห้องของคุณคือ: ${roomId}\n(รอเพื่อนกรอกเลขนี้)`;
+            
+            // Auto copy to clipboard (ถ้า Browser รองรับ)
+            if(navigator.clipboard) {
+                navigator.clipboard.writeText(roomId).then(() => {
+                    alert('คัดลอกเลขห้องแล้ว: ' + roomId);
+                }).catch(() => {});
+            }
         });
 
         socket.on('game_start', (data) => {
@@ -217,7 +227,7 @@
             myRoomId = data.roomId;
             document.getElementById('menu').classList.add('hidden');
             document.getElementById('game').classList.remove('hidden');
-            document.getElementById('room-info').innerText = `Room: ${myRoomId} | คุณคือทีม ${mySymbol}`;
+            document.getElementById('room-info').innerText = `Room: ${myRoomId} | คุณคือ ${mySymbol}`;
             updateStatus();
         });
 
@@ -225,9 +235,7 @@
             const cells = document.querySelectorAll('.cell');
             data.board.forEach((val, i) => {
                 cells[i].innerText = val || '';
-                // ล้างสีเก่า
                 cells[i].classList.remove('x', 'o');
-                // ใส่สีใหม่ตาม X หรือ O
                 if (val === 'X') cells[i].classList.add('x');
                 if (val === 'O') cells[i].classList.add('o');
             });
@@ -237,10 +245,12 @@
 
         socket.on('game_over', (data) => {
             setTimeout(() => {
-                if (data.winner === 'Draw') {
+                if(data.isDisconnect) {
+                    alert('คู่แข่งหลุดจากการเชื่อมต่อ! คุณชนะ! 🏆');
+                } else if (data.winner === 'Draw') {
                     alert('เสมอ! (Draw) เกมตึงจัดๆ');
                 } else {
-                    alert(data.winner === mySymbol ? '🎉 ยินดีด้วย! คุณชนะ!' : '💀 เสียใจด้วย คุณแพ้ซะแล้ว');
+                    alert(data.winner === mySymbol ? '🎉 ยินดีด้วย! คุณชนะ!' : '💀 แพ้แล้ว! ลองใหม่นะ');
                 }
                 location.reload();
             }, 100);
@@ -253,10 +263,10 @@
             const statusEl = document.getElementById('status');
             if (isMyTurn) {
                 statusEl.innerText = "⚡ ตาของคุณแล้ว!";
-                statusEl.style.color = "#38ef7d"; // สีเขียว
+                statusEl.style.color = "#38ef7d";
             } else {
                 statusEl.innerText = "⏳ รอฝ่ายตรงข้าม...";
-                statusEl.style.color = "#ff2e63"; // สีแดง
+                statusEl.style.color = "#ff2e63";
             }
         }
     </script>
